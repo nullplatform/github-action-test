@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
+jobs:
+  fetch-data:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        id: checkout-code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - 
+        name: Get changed applications
+        id: get-changed-applications
+        env:
+          APPLICATIONS_PATH: ${{ vars.APPLICATIONS_PATH }}
+        run: |
+          changed_applications=$(git diff --name-only HEAD^ HEAD -- $APPLICATIONS_PATH | cut -d / -f 1,2 | uniq | paste -sd "," -)
+          echo "Changed applications: $changed_applications"
+          echo "applications=$changed_applications" >> $GITHUB_OUTPUT
+      - 
+        name: Login to Nullplatform
+        id: login-nullplatform
+        uses: nullplatform/github-action-login@main
+        with:
+          token: ${{ secrets.NULLPLATFORM_ACCESS_TOKEN }}
+      - 
+        name: Get Nullplatform applications
+        id: query-applications
+        uses: nullplatform/github-action-metadata@main
+        with:
+          resource: application
+          repository-app-path: ${{ steps.get-changed-applications.outputs.applications }}
+          # The following parameters are optional
+          #repository-url: ${{ github.event.repository.html_url }}
+    outputs:
+      metadata: ${{ steps.query-applications.outputs.metadata }}
+  build:
+    needs: fetch-data
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        application: ${{ fromJson(needs.fetch-data.outputs.metadata) }}
+    steps:
+      -
+        name: Checkout
+        id: checkout-applicaiton-code
+        uses: actions/checkout@v3
+      - 
+        name: Configure AWS credentials
+        id: configure-aws-crendetials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.BUILD_AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.BUILD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.BUILD_AWS_REGION }}
+      - 
+        name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      -
+        name: Login to Nullplatform
+        id: login-nullplatform
+        uses: nullplatform/github-action-login@main
+        with:
+          token: ${{ secrets.NULLPLATFORM_ACCESS_TOKEN }}
+      - 
+        name: Create build for ${{ matrix.application.name }}
+        id: create-build
+        uses: nullplatform/github-action-build@main
+        with:
+          action: create
+          application-id: ${{ matrix.application.id }}
+          # The following parameters are optional
+          #commit-id: ${{ github.event.head_commit.id }}
+          #commit-permalink: ${{ github.event.head_commit.url }}
+          #description: ${{ github.event.head_commit.message }}
+          #branch: ${{ github.ref }}
+      - 
+        name: Create Docker image for ${{ matrix.application.name }}
+        id: create-docker-image
+        env:
+          DOCKER_FILE_PATH: ${{ matrix.application.code_repository_app_path }}
+          IMAGE_REPOSITORY: ${{ matrix.application.image_repository_url }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $IMAGE_REPOSITORY:$IMAGE_TAG -f $DOCKER_FILE_PATH/Dockerfile .
+          docker push $IMAGE_REPOSITORY:$IMAGE_TAG
+      - 
+        name: Update build for ${{ matrix.application.name }}
+        id: update-build
+        uses: nullplatform/github-action-build@main
+        env:
+          CREATE_IMAGE_RESULT: ${{ steps.create-docker-image.outcome == 'failure' && 'failed' || 'successful' }}
+        with:
+          action: update
+          id: ${{ steps.create-build.outputs.id }}
+          status: ${{ env.CREATE_IMAGE_RESULT }}
+          image-repository-url: ${{ matrix.application.image_repository_url }}
