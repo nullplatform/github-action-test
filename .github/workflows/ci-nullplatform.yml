@@ -32,13 +32,13 @@ jobs:
       - 
         name: Login to Nullplatform
         id: login-nullplatform
-        uses: nullplatform/github-action-login@main
+        uses: nullplatform/github-action-login@v1
         with:
           token: ${{ secrets.NULLPLATFORM_ACCESS_TOKEN }}
       - 
         name: Get Nullplatform applications
         id: query-applications
-        uses: nullplatform/github-action-metadata@main
+        uses: nullplatform/github-action-metadata@v1
         with:
           resource: application
           repository-app-path: ${{ steps.get-changed-applications.outputs.applications }}
@@ -73,13 +73,13 @@ jobs:
       -
         name: Login to Nullplatform
         id: login-nullplatform
-        uses: nullplatform/github-action-login@main
+        uses: nullplatform/github-action-login@v1
         with:
           token: ${{ secrets.NULLPLATFORM_ACCESS_TOKEN }}
       - 
         name: Create build for ${{ matrix.application.name }}
         id: create-build
-        uses: nullplatform/github-action-build@main
+        uses: nullplatform/github-action-build@v1
         with:
           action: create
           application-id: ${{ matrix.application.id }}
@@ -101,7 +101,7 @@ jobs:
       - 
         name: Update build for ${{ matrix.application.name }}
         id: update-build
-        uses: nullplatform/github-action-build@main
+        uses: nullplatform/github-action-build@v1
         env:
           CREATE_IMAGE_RESULT: ${{ steps.create-docker-image.outcome == 'failure' && 'failed' || 'successful' }}
         with:
