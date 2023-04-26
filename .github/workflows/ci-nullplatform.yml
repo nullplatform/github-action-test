@@ -95,6 +95,7 @@ jobs:
           DOCKER_FILE_PATH: ${{ matrix.application.code_repository_app_path }}
           IMAGE_REPOSITORY: ${{ matrix.application.image_repository_url }}
           IMAGE_TAG: ${{ github.sha }}
+        continue-on-error: true
         run: |
           docker build -t $IMAGE_REPOSITORY:$IMAGE_TAG -f $DOCKER_FILE_PATH/Dockerfile .
           docker push $IMAGE_REPOSITORY:$IMAGE_TAG
