@@ -88,7 +88,8 @@ jobs:
       - name: Get asset name
         id: replace
         run: |
-          echo "ASSET_NAME=${{ matrix.application.code_repository_app_path//\//- }}" >> $GITHUB_ENV
+          app_path=${{ matrix.application.code_repository_app_path }}
+          echo "ASSET_NAME=${app_path//\//-}" >> $GITHUB_ENV
       - name: Create asset for build
         id: create-asset
         uses: nullplatform/github-action-asset@v1
