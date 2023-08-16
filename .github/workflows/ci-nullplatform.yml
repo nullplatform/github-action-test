@@ -14,14 +14,12 @@ jobs:
   fetch-data:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         id: checkout-code
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
-      - 
-        name: Get changed applications
+      - name: Get changed applications
         id: get-changed-applications
         env:
           APPLICATIONS_PATH: ${{ vars.APPLICATIONS_PATH }}
@@ -29,14 +27,12 @@ jobs:
           changed_applications=$(git diff --name-only HEAD^ HEAD -- $APPLICATIONS_PATH | cut -d / -f 1,2 | uniq | paste -sd "," -)
           echo "Changed applications: $changed_applications"
           echo "applications=$changed_applications" >> $GITHUB_OUTPUT
-      - 
-        name: Login to Nullplatform
+      - name: Login to Nullplatform
         id: login-nullplatform
         uses: nullplatform/github-action-login@v1
         with:
           token: ${{ secrets.NULLPLATFORM_ACCESS_TOKEN }}
-      - 
-        name: Get Nullplatform applications
+      - name: Get Nullplatform applications
         id: query-applications
         uses: nullplatform/github-action-metadata@v1
         with:
@@ -54,30 +50,25 @@ jobs:
       matrix:
         application: ${{ fromJson(needs.fetch-data.outputs.metadata) }}
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         id: checkout-applicaiton-code
         uses: actions/checkout@v3
-      - 
-        name: Configure AWS credentials
+      - name: Configure AWS credentials
         id: configure-aws-crendetials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.BUILD_AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.BUILD_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.BUILD_AWS_REGION }}
-      - 
-        name: Login to Amazon ECR
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-      -
-        name: Login to Nullplatform
+      - name: Login to Nullplatform
         id: login-nullplatform
         uses: nullplatform/github-action-login@v1
         with:
           token: ${{ secrets.NULLPLATFORM_ACCESS_TOKEN }}
-      - 
-        name: Create build for ${{ matrix.application.name }}
+      - name: Create build for ${{ matrix.application.name }}
         id: create-build
         uses: nullplatform/github-action-build@v1
         with:
@@ -88,25 +79,35 @@ jobs:
           #commit-permalink: ${{ github.event.head_commit.url }}
           #description: ${{ github.event.head_commit.message }}
           #branch: ${{ github.ref }}
-      - 
-        name: Create Docker image for ${{ matrix.application.name }}
-        id: create-docker-image
+      - name: Build Docker image
+        id: docker-build-image
         env:
           DOCKER_FILE_PATH: ${{ matrix.application.code_repository_app_path }}
-          IMAGE_REPOSITORY: ${{ matrix.application.image_repository_url }}
-          IMAGE_TAG: ${{ github.sha }}
-        continue-on-error: true
+        shell: bash
+        run: docker build -t docker-image -f $DOCKER_FILE_PATH/Dockerfile .
+      - name: Create asset for build
+        id: create-asset
+        uses: nullplatform/github-action-asset@v1
+        with:
+          action: create
+          build-id: ${{ steps.create-build.outputs.id }}
+          type: docker-image
+          name: ${{ matrix.application.code_repository_app_path//\//- }}
+      - name: Push Docker image
+        id: docker-push-image
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ fromJson(steps.create-asset.outputs.targets)[0].url }}
         run: |
-          docker build -t $IMAGE_REPOSITORY:$IMAGE_TAG -f $DOCKER_FILE_PATH/Dockerfile .
-          docker push $IMAGE_REPOSITORY:$IMAGE_TAG
-      - 
-        name: Update build for ${{ matrix.application.name }}
-        id: update-build
+          docker tag docker-image:latest $IMAGE_TAG
+          docker push $IMAGE_TAG
+      - name: Finalize build for ${{ matrix.application.name }} with status ${{ steps.docker-push-image.outcome == 'failure' && 'failed' || 'successful' }}
+        id: finalize-build
+        if: ${{ always() }}
         uses: nullplatform/github-action-build@v1
         env:
-          CREATE_IMAGE_RESULT: ${{ steps.create-docker-image.outcome == 'failure' && 'failed' || 'successful' }}
+          CREATE_IMAGE_RESULT: ${{ steps.docker-push-image.outcome == 'failure' && 'failed' || 'successful' }}
         with:
           action: update
           id: ${{ steps.create-build.outputs.id }}
           status: ${{ env.CREATE_IMAGE_RESULT }}
-          image-repository-url: ${{ matrix.application.image_repository_url }}
