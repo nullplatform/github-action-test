@@ -24,7 +24,7 @@ jobs:
           echo "applications=$changed_applications" >> $GITHUB_OUTPUT
       - name: Start Nullplatform CI for changed applications
         id: nullplatform-ci-monorepo
-        uses: nullplatform/github-action-setup-ci@main
+        uses: nullplatform/github-action-setup-ci@v1
         with:
           api-key: ${{ secrets.NULLPLATFORM_API_KEY }}
           monorepo: true
@@ -41,25 +41,25 @@ jobs:
     steps:
       - name: Start Nullplatform CI
         id: nullplatform-ci
-        uses: nullplatform/github-action-setup-ci@main
+        uses: nullplatform/github-action-setup-ci@v1
         with:
           api-key: ${{ secrets.NULLPLATFORM_API_KEY }}
           application-id: ${{ matrix.application.id }}
       - name: Get build parameters
         id: get-build-parameters
-        uses: nullplatform/github-action-parameter@main
+        uses: nullplatform/github-action-parameter@v1
         with:
           application-id: ${{ matrix.application.id }}
       - name: Build asset for ${{ matrix.application.name }}
         id: build-asset
-        uses: nullplatform/github-action-asset-build@main
+        uses: nullplatform/github-action-asset-build@v1
         with:
           build-working-directory: ${{ matrix.application.code_repository.application_path }}
           asset-working-directory: ${{ matrix.application.code_repository.application_path }}
           name: ${{ matrix.application.slug }}
       - name: Push asset for ${{ matrix.application.name }}
         id: push-asset
-        uses: nullplatform/github-action-asset-push@main
+        uses: nullplatform/github-action-asset-push@v1
         with:
           build-working-directory: ${{ matrix.application.code_repository.application_path }}
           asset-working-directory: ${{ matrix.application.code_repository.application_path }}
@@ -69,7 +69,7 @@ jobs:
       - name: End Nullplatform CI
         if: ${{ always() }}
         id: end-nullplatform-ci
-        uses: nullplatform/github-action-setup-ci@main
+        uses: nullplatform/github-action-setup-ci@v1
         with:
           build-id: ${{ steps.nullplatform-ci.outputs.build-id }}
           status: ${{ steps.push-asset.outcome == 'failure' && 'failed' || 'successful' }}
