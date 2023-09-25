@@ -19,7 +19,7 @@ jobs:
       - name: Get changed applications
         id: get-changed-applications
         run: |
-          changed_applications=$(git diff --name-only HEAD^ HEAD -- $APPLICATIONS_PATH | cut -d / -f 1,2 | uniq | paste -sd "," -)
+          changed_applications=$(git diff --name-only HEAD^ HEAD -- apps | cut -d / -f 1,2 | uniq | paste -sd "," -)
           echo "Changed applications: $changed_applications"
           echo "applications=$changed_applications" >> $GITHUB_OUTPUT
       - name: Start Nullplatform CI for changed applications
@@ -45,11 +45,6 @@ jobs:
         with:
           api-key: ${{ secrets.NULLPLATFORM_API_KEY }}
           application-id: ${{ matrix.application.id }}
-      ######
-      - name: Setup Docker
-        id: setup-docker
-        uses: docker/setup-buildx-action@v2
-      ######
       - name: Get build parameters
         id: get-build-parameters
         uses: nullplatform/github-action-parameter@main
@@ -61,14 +56,14 @@ jobs:
         with:
           build-working-directory: ${{ matrix.application.code_repository.application_path }}
           asset-working-directory: ${{ matrix.application.code_repository.application_path }}
-          name: ${{ matrix.application.code_repository.application_path }}
+          name: ${{ matrix.application.slug }}
       - name: Push asset for ${{ matrix.application.name }}
         id: push-asset
         uses: nullplatform/github-action-asset-push@main
         with:
           build-working-directory: ${{ matrix.application.code_repository.application_path }}
           asset-working-directory: ${{ matrix.application.code_repository.application_path }}
-          name: ${{ matrix.application.code_repository.application_path }}
+          name: ${{ matrix.application.slug }}
           build-id: ${{ steps.nullplatform-ci.outputs.build-id }}
           type: docker-image
       - name: End Nullplatform CI
