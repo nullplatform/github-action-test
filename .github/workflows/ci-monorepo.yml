@@ -60,12 +60,14 @@ jobs:
         uses: nullplatform/github-action-asset-build@main
         with:
           build-working-directory: ${{ matrix.application.code_repository.application_path }}
+          asset-working-directory: ${{ matrix.application.code_repository.application_path }}
           name: ${{ matrix.application.code_repository.application_path }}
       - name: Push asset for ${{ matrix.application.name }}
         id: push-asset
         uses: nullplatform/github-action-asset-push@main
         with:
           build-working-directory: ${{ matrix.application.code_repository.application_path }}
+          asset-working-directory: ${{ matrix.application.code_repository.application_path }}
           build-id: ${{ steps.nullplatform-ci.outputs.build-id }}
           type: docker-image
       - name: End Nullplatform CI
