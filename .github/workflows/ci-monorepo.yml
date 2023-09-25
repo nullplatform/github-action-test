@@ -72,7 +72,7 @@ jobs:
       - name: End Nullplatform CI
         if: ${{ always() }}
         id: end-nullplatform-ci
-        uses: nullplatform/github-action-ci@main
+        uses: nullplatform/github-action-setup-ci@main
         with:
           build-id: ${{ steps.nullplatform-ci.outputs.build-id }}
           status: ${{ steps.push-asset.outcome == 'failure' && 'failed' || 'successful' }}
