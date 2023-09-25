@@ -3,7 +3,7 @@ name: ci-nullplatform
 on:
   push:
     branches:
-      - main
+      - test
 
 permissions:
   id-token: write
