@@ -111,7 +111,7 @@ jobs:
         if: ${{ always() }}
         uses: nullplatform/github-action-build@v1
         env:
-          CREATE_IMAGE_RESULT: ${{ steps.docker-push-image.outcome == 'failure' && 'failed' || 'successful' }}
+          CREATE_IMAGE_RESULT: ${{ contains(fromJSON('["failure", "cancelled"]'), job.status) && 'failed' || 'successful' }}
         with:
           action: update
           id: ${{ steps.create-build.outputs.id }}
