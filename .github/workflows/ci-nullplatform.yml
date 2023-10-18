@@ -1,3 +1,9 @@
+#
+#
+# DO NOT use this example, use ci-monorepo.yml instead
+#
+#
+
 name: ci-nullplatform
 
 on:
